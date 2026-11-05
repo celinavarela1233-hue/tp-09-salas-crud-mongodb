@@ -1,101 +1,46 @@
 const Reserva = require("../modelos/reservas");
-const mongoose = require("mongoose");
 
-function validarId(id) {
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    const error = new Error("Identificador inválido");
-    error.codigo = "ID_INVALIDO";
-    throw error;
-  }
-}
-
-async function listar() {
-  const documentos = await Reserva.find({}).lean();
-  return documentos.map(representarReserva);
+async function listar(query = {}) {
+  const reservas = await Reserva.find(query);
+  return reservas;
 }
 
 async function obtenerPorId(id) {
-  validarId(id);
-  const documento = await Reserva.findById(id).lean();
-  return documento ? representarReserva(documento) : null;
+  const reserva = await Reserva.findById(id);
+  return reserva;
 }
 
 async function crear(datos) {
-  const documento = await Reserva.create({
-    estudiante: datos.estudiante,
-    email: datos.email,
-    sala: datos.sala,
-    fecha: datos.fecha,
-    turno: datos.turno,
-    personas: datos.personas,
-  });
-  return representarReserva(documento);
-}
-
-async function reemplazar(id, datos) {
-  validarId(id);
-  const reemplazo = {
-    estudiante: datos.estudiante,
-    email: datos.email,
-    sala: datos.sala,
-    fecha: datos.fecha,
-    turno: datos.turno,
-    personas: datos.personas,
-    estado: datos.estado,
-  };
-  const documento = await Reserva.findOneAndReplace({ _id: id }, reemplazo, {
-    runValidators: true,
-    returnDocument: "after",
-    upsert: false,
-  });
-  return documento ? representarReserva(documento) : null;
-}
-
-async function actualizar(id, datos) {
-  validarId(id);
-  const cambios = {};
-  for (const campo of ["personas", "estado"]) {
-    if (Object.hasOwn(datos, campo)) {
-      cambios[campo] = datos[campo];
-    }
-  }
-  if (Object.keys(cambios).length === 0) {
-    const error = new Error("Actualización vacía");
-    error.codigo = "ENTRADA_INVALIDA";
-    throw error;
-  }
-  const documento = await Reserva.findOneAndUpdate(
-    { _id: id },
-    { $set: cambios },
-    { runValidators: true, returnDocument: "after", upsert: false },
-  );
-  return documento ? representarReserva(documento) : null;
+  const nuevaReserva = new Reserva(datos);
+  return await nuevaReserva.save();
 }
 
 async function eliminar(id) {
-  validarId(id);
-  const resultado = await Reserva.deleteOne({ _id: id });
-  return resultado.deletedCount === 1;
+  return await Reserva.findByIdAndDelete(id);
 }
 
-function representarReserva(documento) {
-  return {
-    id: documento._id.toString(),
-    estudiante: documento.estudiante,
-    email: documento.email,
-    sala: documento.sala,
-    fecha: documento.fecha,
-    turno: documento.turno,
-    personas: documento.personas,
-    estado: documento.estado,
-  };
+async function reemplazar(id, datos) {
+  return await Reserva.findByIdAndUpdate(id, datos, {
+    new: true,
+    runValidators: true,
+    upsert: false,
+  });
+}
+
+async function actualizar(id, datos) {
+  return await Reserva.findByIdAndUpdate(id, { $set: datos }, {
+    new: true,
+    runValidators: true,
+    upsert: false,
+  });
 }
 
 module.exports = {
   listar,
   obtenerPorId,
   crear,
+  eliminar,
   reemplazar,
   actualizar,
-  eliminar,
+  obtenerTodas: listar,
 };

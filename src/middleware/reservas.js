@@ -1,48 +1,28 @@
-const servicioReservas = require("../servicios/reservas");
-
-function definirSeccion(req, res, next) {
-  res.locals.seccion = "Reservas de salas";
-  next();
-}
+const Reserva = require("../modelos/reservas");
 
 function validarReserva(req, res, next) {
-  const estudiante = String(req.body.estudiante ?? "").trim();
-  const email = String(req.body.email ?? "").trim();
-  const sala = String(req.body.sala ?? "").trim();
-  const fecha = String(req.body.fecha ?? "").trim();
-  const turno = String(req.body.turno ?? "").trim();
-  const personas = Number(req.body.personas);
-
-  const salaValida = servicioReservas.salasPermitidas.includes(sala);
-  const turnoValido = servicioReservas.turnosPermitidos.includes(turno);
-  const personasValidas =
-    Number.isInteger(personas) && personas >= 1 && personas <= 6;
-  const emailValido = email.includes("@");
-
-  if (
-    !estudiante ||
-    !email ||
-    !sala ||
-    !fecha ||
-    !turno ||
-    !Number.isFinite(personas) ||
-    !salaValida ||
-    !turnoValido ||
-    !personasValidas ||
-    !emailValido
-  ) {
-    return res.status(400).render("reservas/nueva", {
-      titulo: "Nueva Reserva",
-      error: "Completá todos los campos con valores válidos",
-      valores: req.body,
-    });
+  const datos = req.body;
+  if (!datos || typeof datos !== "object" || Array.isArray(datos)) {
+    return res.status(400).json({ error: "El cuerpo de la solicitud debe ser un objeto válido." });
   }
 
-  req.reservaValidada = { estudiante, email, sala, fecha, turno, personas };
+  const { estudiante, email, sala, fecha, turno, personas } = datos;
+
+  if (!estudiante || !email || !sala || !fecha || !turno || personas === undefined) {
+    return res.status(400).json({ error: "Faltan campos obligatorios en la reserva." });
+  }
+
+  if (!Reserva.salasPermitidas.includes(sala)) {
+    return res.status(400).json({ error: "Sala no permitida." });
+  }
+
+  if (!Reserva.turnosPermitidos.includes(turno)) {
+    return res.status(400).json({ error: "Turno no permitido." });
+  }
+
   next();
 }
 
 module.exports = {
-  definirSeccion,
   validarReserva,
 };
